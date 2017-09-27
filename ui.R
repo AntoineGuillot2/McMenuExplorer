@@ -3,6 +3,7 @@ require(shinydashboard)
 require(data.table)
 require(D3partitionR)
 require(shinyWidgets)
+require(DT)
 navbarPage(
   title='MacExplorer',
   tabPanel("Menu selection",
