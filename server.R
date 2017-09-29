@@ -15,7 +15,8 @@ shinyServer(function(input,output,session)
     selectizeInput('dish_type_selection','Select dish type',c('All',unique(dataMc[['Category']])),multiple=T,selected='All')
   )
   output$dish_selection<-renderUI(
-    selectizeInput('dish_selection','Add a dish',split(dataMc[Category%in%input$dish_type_selection | input$dish_type_selection=='All']$Item,dataMc[Category%in%input$dish_type_selection | input$dish_type_selection=='All',Category]),multiple=T)
+    selectizeInput('dish_selection','Add a dish',split(dataMc[Category%in%input$dish_type_selection | input$dish_type_selection=='All']$Item,dataMc[Category%in%input$dish_type_selection | input$dish_type_selection=='All',Category]),
+                   multiple=T,selected=dataMc[Category%in%input$dish_type_selection | input$dish_type_selection=='All']$Item[sample(1:260,5)])
   )
   output$selected_items<-renderDataTable(
     {
@@ -58,30 +59,73 @@ shinyServer(function(input,output,session)
     
     lapply(dataMc[Item%in%input$dish_selection,Item],tags$li))
     )
-  
+  output$nutrient_to_show_ui<-renderUI({selectizeInput('nutrient_to_show','Nutrients',
+                                                 choices=colnames(dataMc)[which(!colnames(dataMc)%like%'Daily'&!colnames(dataMc)%like%'Calories')][-c(1:3)]
+                                                 ,multiple=T,selected=colnames(dataMc)[which(!colnames(dataMc)%like%'Daily'&!colnames(dataMc)%like%'Calories')][-c(1:3)][1:3])})
   
   ##Third tab, explore nutrients
   output$viz_nutrients<-renderUI({
-
     
-    if (input$variables_to_show_nutrients[1]%like%'% Daily')
+    d3_list=list()
+    for (current_nutrient_to_show in input$nutrient_to_show)
     {
-      count_variable='% Daily Value'
+      if (current_nutrient_to_show%in%c('Cholesterol','Sodium'))
+      {
+        count_variable='Milligramms'
+      }
+      else
+      {
+        count_variable='Gramms'
+      }
+      DT=melt(dataMc[Item%in%input$dish_selection],id.vars = input$variables_to_show_nutrients,measure.vars = current_nutrient_to_show,variable.name = 'Origin',value.name ='Cal')
+      current_steps=c('Origin',input$variables_to_show_nutrients)
+      DT=DT[,.(Cal=sum(Cal)),by=c(input$variables_to_show_nutrients,'Origin')]
+      setnames(DT,old='Cal',new=count_variable)
+      d3_tp=D3partitionR()%>%add_data(DT,steps = current_steps,count = count_variable,tooltip=c('name',count_variable))%>%
+        set_chart_type(input$chart_type_nutrients)%>%
+        set_legend_parameters(visible = F)%>%
+        set_labels_parameters(cut_off=25)%>%
+        set_trail(visible=F)%>%
+        add_title(text = paste0(current_nutrient_to_show,': ',sum(DT[[count_variable]]),' ',count_variable ),style = 'font-size:16px;')
+      d3_list=c(d3_list,list(d3_tp))
+      
     }
-    else
+    fluidPage(lapply(d3_list,function(x){
+      tags$div(column(4,renderD3partitionR(plot(x))))
+      }))
+
+  })
+  
+  
+  ##Fourth tab, explore daily value
+  output$daily_value_to_show_ui<-renderUI({selectizeInput('daily_value_to_show','Daily value',
+                                                       choices=colnames(dataMc)[which(colnames(dataMc)%like%'Daily')],multiple=T,selected=colnames(dataMc)[which(colnames(dataMc)%like%'Daily')][1:3])})
+  
+  
+  
+  output$viz_daily_value<-renderUI({
+    
+    d3_list=list()
+    for (daily_value_to_show in input$daily_value_to_show)
     {
-      count_variable='Grammes'
+      count_variable='%'
+      DT=melt(dataMc[Item%in%input$dish_selection],id.vars = input$variables_to_show_daily_value,measure.vars = daily_value_to_show,variable.name = 'Origin',value.name ='Cal')
+      current_steps=c('Origin',input$variables_to_show_daily_value)
+      DT=DT[,.(Cal=sum(Cal)),by=c(input$variables_to_show_daily_value,'Origin')]
+      setnames(DT,old='Cal',new=count_variable)
+      d3_tp=D3partitionR()%>%add_data(DT,steps = current_steps,count = count_variable,tooltip=c('name',count_variable))%>%
+        set_chart_type(input$chart_type_daily_value)%>%
+        set_legend_parameters(visible = F)%>%
+        set_labels_parameters(cut_off=25)%>%
+        set_trail(visible=F)%>%
+        add_title(text = paste0(daily_value_to_show,': ',sum(DT[[count_variable]]),' ',count_variable ),style = 'font-size:16px;')
+      d3_list=c(d3_list,list(d3_tp))
+      
     }
-    DT=melt(dataMc[Item%in%input$dish_selection],id.vars = input$variables_to_show_nutrients,measure.vars = input$nutrient_to_show,variable.name = 'Origin',value.name ='Cal')
-    current_steps=c('Origin',input$variables_to_show_nutrients)
-    DT=DT[,.(Cal=sum(Cal)),by=c(input$variables_to_show_nutrients,'Origin')]
-    setnames(DT,old='Cal',new=count_variable)
-    d3_tp=D3partitionR()%>%add_data(DT,steps = current_steps,count = count_variable,tooltip=c('name',count_variable))%>%
-      set_chart_type(input$chart_type_nutrients)%>%
-      set_legend_parameters(zoom_subset=T)%>%
-      set_labels_parameters(cut_off=10)%>%
-      add_title(text = 'Where are the nutrients from ?',style = 'font-size:20px;')
-    fluidPage(renderD3partitionR({plot(d3_tp)}))
+    fluidPage(lapply(d3_list,function(x){
+      tags$div(column(4,renderD3partitionR(plot(x))))
+    }))
+    
   })
   
 })
