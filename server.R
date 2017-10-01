@@ -4,6 +4,9 @@ require(DT)
 require(D3partitionR)
 require(magrittr)
 require(shinyWidgets)
+require(ggplot2)
+require(stringr)
+
 
 dataMc=fread('data/menu.csv')
 
@@ -43,21 +46,28 @@ shinyServer(function(input,output,session)
       current_steps=c(input$variables_to_show_cal,'Origin')
     }
     DT=DT[,.(Cal=sum(Cal)),by=c(input$variables_to_show_cal,'Origin')]
-    D3partitionR()%>%add_data(DT,steps = current_steps,count = 'Cal',tooltip=c('name','Cal'))%>%
+    d3_sv<<-D3partitionR()%>%add_data(DT,steps = current_steps,count = 'Cal',tooltip=c('name','Cal'))%>%
       set_chart_type(input$chart_type_cal)%>%
       set_legend_parameters(zoom_subset=T)%>%
       set_labels_parameters(cut_off=10)%>%
       add_title(text = 'Where are the calories from ?',style = 'font-size:20px;')%>%
-      plot()
+      set_shiny_input(input_id=c('test_shiny_1'),enabled_inputs = list(leaves = T))
+      plot(d3_sv)
   })
   
-  output$current_menu_cal<-renderUI(
-    fluidPage(
-      hr(),
-      h4(strong('Selected Items:'),align='center'),
+  output$current_menu_cal<-renderPlot(
+    {
+
+      DT_cal<-rbindlist(lapply(input$test_shiny_1$leaves,as.data.frame))[,color:=rgb(color.r,color.g,color.b,maxColorValue = 255)]
+      DT_cal<-unique(DT_cal[,.(Cal=sum(Cal),color=unique(color)),by=c('name')])
+      ggplot(DT_cal,aes(x=reorder(name, Cal),y=Cal,fill=name)) +
+        geom_bar(stat="identity")+coord_flip()+xlab('')+
+        scale_fill_manual(values = DT_cal$color,breaks=DT_cal$name)+
+        scale_x_discrete(labels = function(x) str_wrap(x, width = 20))+ 
+        theme(legend.position="none")
       
-    
-    lapply(dataMc[Item%in%input$dish_selection,Item],tags$li))
+    }
+
     )
   output$nutrient_to_show_ui<-renderUI({selectizeInput('nutrient_to_show','Nutrients',
                                                  choices=colnames(dataMc)[which(!colnames(dataMc)%like%'Daily'&!colnames(dataMc)%like%'Calories')][-c(1:3)]
