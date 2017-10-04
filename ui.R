@@ -4,8 +4,11 @@ require(data.table)
 require(D3partitionR)
 require(shinyWidgets)
 require(DT)
+
+###Building UI
 navbarPage(
-  title='MacExplorer',
+  title='McExplorer',
+  ##Menu Selecton tab: Where thenuser selects which items will be shown in next tabs
   tabPanel("Menu selection",
            column(3,
                   uiOutput('dish_type_selection')),
@@ -13,6 +16,7 @@ navbarPage(
                   uiOutput('dish_selection')),
            column(12,dataTableOutput('selected_items'))
            ),
+  ##Calories exlorer tab: explore number of calories
   tabPanel("Calories explorer",
            column(3,
                   h4(strong('Chart options and info'),align='center'),
@@ -22,10 +26,12 @@ navbarPage(
                     awesomeRadio('chart_type_cal', 'Chart type', c('sunburst','circle_treemap','treemap','icicle','partition_chart'),selected = 'treemap'),
                   icon=icon('gear'),status='primary')),
                   column(4,circleButton('help_cal',icon=icon('question-circle'),status ='primary')),
+                  ###Bar chart showing the calories in the leaf of the partition chart
                   column(12,hr(),plotOutput('current_menu_cal'))
                   ),
                   
-           column(9,D3partitionROutput('viz_calories'))),
+           column(9,D3partitionROutput('viz_calories',height=500))),
+  ##Nutrients explorer tab
   tabPanel("Nutrients explorer",
            column(3,
                   h4(strong('Chart options and info'),align='center'),
@@ -42,6 +48,7 @@ navbarPage(
            ),
            
            column(9,uiOutput('viz_nutrients'))),
+  ##Daily value explorer tab
   tabPanel("Daily value explorer",
            column(3,
                   h4(strong('Chart options and info'),align='center'),
