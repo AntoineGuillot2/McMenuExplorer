@@ -57,7 +57,7 @@ shinyServer(function(input,output,session)
       set_labels_parameters(cut_off=10)%>%
       add_title(text = 'Where are the calories from ?',style = 'font-size:20px;')%>%
       set_shiny_input(input_id=c('test_shiny_1'),enabled_inputs = list(leaves = T))%>%
-      plot(d3_sv)
+      plot()
   })
   
   ##Bar chart with the calorie value of the leaves in the partitionchart
